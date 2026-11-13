@@ -385,7 +385,7 @@
         }
 
         button.action-btn:hover {
-            background-color: var(--primary-hover);
+            background-color: var(-primary-hover);
         }
 
         button.action-btn.secondary {
@@ -439,42 +439,13 @@
             <p>這裡收錄各校各年度段考題。每一份都可以直接在瀏覽器打開、想挑戰的同學，可以直接開始吧！</p>
         </header>
 
-        <!-- 視圖一：質感卡片式考卷大廳 -->
+        <!-- 視圖一：動態生成的考卷大廳 -->
         <div id="home-view">
             <div class="section-title">
                 <span>📚</span> 選擇挑戰的考卷
             </div>
-            <div class="exam-grid">
-                
-                <!-- 北一女中卡片 -->
-                <div class="exam-card" onclick="selectExam('tfg')">
-                    <div>
-                        <div class="tag-container">
-                            <span class="tag">高一上學期</span>
-                            <span class="tag">第一次段考</span>
-                            <span class="tag accent">14 題</span>
-                        </div>
-                        <h3>北一女中智慧題庫</h3>
-                        <p>精選北一女中高一數學段考題庫，涵蓋核心觀念與詳細 LaTeX 排版推導解析。</p>
-                    </div>
-                    <div class="enter-btn">進入刷題 →</div>
-                </div>
-
-                <!-- 南崁高中卡片 -->
-                <div class="exam-card" onclick="selectExam('nankan')">
-                    <div>
-                        <div class="tag-container">
-                            <span class="tag">高一下學期</span>
-                            <span class="tag">第二次段考</span>
-                            <span class="tag accent">19 題</span>
-                            <span class="tag accent">含圖形題</span>
-                        </div>
-                        <h3>南崁高中數學段考題</h3>
-                        <p>收錄 110學年度下學期高一第二次段考，深度解析數列級數、排列組合與計數原理。</p>
-                    </div>
-                    <div class="enter-btn">進入刷題 →</div>
-                </div>
-
+            <div class="exam-grid" id="exam-grid">
+                <!-- 卡片將由 JavaScript 自動生成 -->
             </div>
 
             <!-- 破蛋小黃雞：敬請期待卡片區 -->
@@ -503,25 +474,90 @@
         </div>
     </div>
 
-    <!-- 載入題庫資料 -->
+    <!-- 載入所有題庫資料 -->
     <script src="data/questions.js"></script>
     <script src="data/nankan_110_2.js"></script>
+    <script src="data/wuling_111_1.js"></script>
 
     <script>
+        // ==========================================
+        // 🌟 自動註冊與管理中心 (新增考卷只需在此登記對應變數)
+        // ==========================================
+        const examRegistry = {};
+
+        function registerExams() {
+            // 如果該 js 檔載入了 questionData，自動註冊
+            if (typeof questionData !== 'undefined') {
+                // 自動從第一筆資料抓學校與考試名稱，或者手動定義
+                const sample = questionData[0] || {};
+                examRegistry['tfg'] = {
+                    title: `${sample.school || "北一女中"}智慧題庫`,
+                    exam: sample.exam || "115學年度上學期高一第一次段考",
+                    tags: ["高一上學期", "第一次段考", `${questionData.length} 題`],
+                    desc: "精選優質高一數學段考題庫，涵蓋核心觀念與詳細 LaTeX 排版推導解析。",
+                    data: questionData
+                };
+            }
+
+            if (typeof nankanData !== 'undefined') {
+                const sample = nankanData[0] || {};
+                examRegistry['nankan'] = {
+                    title: `${sample.school || "南崁高中"}數學段考題`,
+                    exam: sample.exam || "110學年度下學期高一第二次段考",
+                    tags: ["高一下學期", "第二次段考", `${nankanData.length} 題`, "含圖形題"],
+                    desc: "收錄精采段考題庫，深度解析數列級數、排列組合與計數原理。",
+                    data: nankanData
+                };
+            }
+
+            if (typeof wulingData !== 'undefined') {
+                const sample = wulingData[0] || {};
+                examRegistry['wuling'] = {
+                    title: `${sample.school || "武陵高中"}智慧題庫`,
+                    exam: sample.exam || "111學年度上學期高一第一次段考",
+                    tags: ["高一上學期", "第一次段考", `${wulingData.length} 題`],
+                    desc: "收錄高一第一次段考，涵蓋實數、指數、對數與不等式核心觀念。",
+                    data: wulingData
+                };
+            }
+        }
+
+        // 初始化大廳卡片
+        function initHome() {
+            registerExams();
+            const grid = document.getElementById('exam-grid');
+            grid.innerHTML = '';
+
+            for (const [key, exam] of Object.entries(examRegistry)) {
+                let tagsHtml = exam.tags.map(t => `<span class="tag ${t.includes('題') || t.includes('圖') ? 'accent' : ''}">${t}</span>`).join('');
+                
+                const card = document.createElement('div');
+                card.className = 'exam-card';
+                card.onclick = () => selectExam(key);
+                card.innerHTML = `
+                    <div>
+                        <div class="tag-container">${tagsHtml}</div>
+                        <h3>${exam.title}</h3>
+                        <p>${exam.desc}</p>
+                    </div>
+                    <div class="enter-btn">進入刷題 →</div>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
         let currentData = [];
         let currentIndex = 0;
         let examTitleStr = "";
 
-        function selectExam(type) {
-            if (type === 'tfg') {
-                currentData = questionData;
-                examTitleStr = "北一女中 115學年度上學期高一第一次段考";
-            } else if (type === 'nankan') {
-                currentData = nankanData;
-                examTitleStr = "南崁高中 110學年度下學期高一第二次段考";
-            }
+        function selectExam(key) {
+            const exam = examRegistry[key];
+            if (!exam) return;
 
-            document.getElementById('current-exam-title').textContent = examTitleStr;
+            currentData = exam.data;
+            examTitleStr = `${exam.school || ""} ${exam.exam}`;
+
+            document.getElementById('current-exam-title').textContent = `${exam.title} - ${exam.exam}`;
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('quiz-view').style.display = 'block';
 
@@ -660,6 +696,11 @@
                 renderMath();
             }
         }
+
+        // 網頁載入時自動初始化大廳卡片
+        window.onload = function() {
+            initHome();
+        };
     </script>
 </body>
 </html>
